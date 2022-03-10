@@ -2,6 +2,7 @@ package nki
 
 import (
 	_ "embed"
+	"math"
 	"math/rand"
 	"strings"
 
@@ -13,9 +14,13 @@ var nki string
 
 var positions = []physics.Vector{}
 
-func hasPosition(pos physics.Vector) bool {
-	for _, x := range positions {
-		if x == pos {
+func eqf(a, b float64) bool {
+	return math.Abs(a-b) < 1e-9
+}
+
+func hasPosition(x float64, y float64) bool {
+	for _, pos := range positions {
+		if eqf(pos.X(), x) && eqf(pos.Y(), y) {
 			return true
 		}
 	}
@@ -34,9 +39,10 @@ func Generate() string {
 func GetPosition() physics.Vector {
 	x := float64(clamp(rand.Intn(1000), 40))
 	y := float64(clamp(rand.Intn(1000), 40))
-	for hasPosition(physics.NewVector(x, y)) {
+	for hasPosition(x, y) {
 		x = float64(clamp(rand.Intn(1000), 40))
 		y = float64(clamp(rand.Intn(1000), 40))
 	}
+	positions = append(positions, physics.NewVector(x, y))
 	return physics.NewVector(x, y)
 }
