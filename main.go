@@ -3,9 +3,10 @@ package main
 import (
 	"image"
 	"image/color"
-	"math/rand"
+	"path/filepath"
 
 	"github.com/aleksrutins/robotfindskitten/nki"
+	"github.com/aleksrutins/robotfindskitten/util"
 	"github.com/oakmound/oak/v3"
 	"github.com/oakmound/oak/v3/collision"
 	"github.com/oakmound/oak/v3/dlog"
@@ -39,14 +40,19 @@ var messages = map[event.CID]string{}
 func main() {
 	oak.AddScene("rfk", scene.Scene{
 		Start: func(ctx *scene.Context) {
-			robot := entities.NewMoving(100, 100, 32, 32, render.NewColorBox(32, 32, color.RGBA{255, 0, 0, 255}), nil, 0, 0)
-			render.Draw(robot.R)
+			oak.SetColorBackground(image.NewUniform(color.White))
+
+			robotSprite, err := render.LoadSprite(filepath.Join("assets", "images", "Robot.png"))
+			dlog.ErrorCheck(err)
+
+			robot := entities.NewMoving(100, 100, 32, 32, robotSprite, nil, 0, 0)
+			render.Draw(robot.R, 2)
 			robot.Speed = physics.NewVector(5, 5)
 
 			hitLastFrame := &collision.Space{}
 
 			fg := render.DefaultFontGenerator
-			fg.Color = image.NewUniform(color.White)
+			fg.Color = image.NewUniform(color.Black)
 			font, err := fg.Generate()
 			dlog.ErrorCheck(err)
 			font.Unsafe = true
@@ -103,8 +109,10 @@ func main() {
 			for i := 0; i < 50; i++ {
 				msg := nki.Generate()
 				position := nki.GetPosition()
-				item := entities.NewSolid(position.X(), position.Y(), 32, 32, render.NewColorBoxR(32, 32, color.RGBA{uint8(rand.Intn(255)), uint8(rand.Intn(255)), uint8(rand.Intn(255)), 255}), nil, 0)
-				render.Draw(item.R)
+				item := entities.NewSolid(position.X(), position.Y(), 32, 32,
+					util.AssertSprite(render.LoadSprite(filepath.Join("assets", "images", "Item.png"))),
+					nil, 0)
+				render.Draw(item.R, 1)
 				item.UpdateLabel(Item)
 				messages[item.CID] = msg
 			}
