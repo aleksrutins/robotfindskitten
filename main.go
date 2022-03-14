@@ -3,6 +3,7 @@ package main
 import (
 	"image"
 	"image/color"
+	"math/rand"
 	"path/filepath"
 
 	"github.com/aleksrutins/robotfindskitten/nki"
@@ -31,11 +32,18 @@ func hasKey(m map[event.CID]string, item event.CID) bool {
 	return false
 }
 
+func randBetween(from, to int) int {
+	return rand.Intn(to-from) + from
+}
+
 func lerp(v0, v1, t float32) float32 {
 	return v0 + t*(v1-v0)
 }
 
-var messages = map[event.CID]string{}
+var (
+	messages    = map[event.CID]string{}
+	foundKitten = false
+)
 
 func main() {
 	oak.AddScene("rfk", scene.Scene{
@@ -46,7 +54,7 @@ func main() {
 			dlog.ErrorCheck(err)
 
 			robot := entities.NewMoving(100, 100, 32, 32, robotSprite, nil, 0, 0)
-			render.Draw(robot.R, 2)
+			render.Draw(robot.R, 3)
 			robot.Speed = physics.NewVector(5, 5)
 
 			hitLastFrame := &collision.Space{}
@@ -58,7 +66,7 @@ func main() {
 			font.Unsafe = true
 			text := font.NewText("Hello", 0, 0)
 
-			render.Draw(text, 2)
+			render.Draw(text, 4)
 
 			robot.Bind(event.Enter, func(id event.CID, _ interface{}) int {
 				char := event.GetEntity(id).(*entities.Moving)
@@ -97,6 +105,10 @@ func main() {
 					println(messages[hit.CID])
 					text.SetString(messages[hit.CID])
 					hitLastFrame = hit
+
+					if messages[hit.CID] == "You found kitten!" {
+						foundKitten = true
+					}
 				} else if hit == nil {
 					text.SetString("")
 					hitLastFrame = nil
@@ -112,10 +124,41 @@ func main() {
 				item := entities.NewSolid(position.X(), position.Y(), 32, 32,
 					util.AssertSprite(render.LoadSprite(filepath.Join("assets", "images", "Item.png"))),
 					nil, 0)
+				itemText := font.NewText(string(randBetween(33, 47)), position.X()+12, position.Y()+8)
 				render.Draw(item.R, 1)
+				render.Draw(itemText, 2)
 				item.UpdateLabel(Item)
 				messages[item.CID] = msg
 			}
+			// Generate kitten
+			msg := "You found kitten!"
+			position := nki.GetPosition()
+			item := entities.NewSolid(position.X(), position.Y(), 32, 32,
+				util.AssertSprite(render.LoadSprite(filepath.Join("assets", "images", "Item.png"))),
+				nil, 0)
+			itemText := font.NewText(string(randBetween(33, 47)), position.X()+12, position.Y()+8)
+			render.Draw(item.R, 1)
+			render.Draw(itemText, 2)
+			item.UpdateLabel(Item)
+			messages[item.CID] = msg
+		},
+		Loop: func() (cont bool) { return !foundKitten },
+		End:  func() (nextScene string, result *scene.Result) { return "end", nil },
+	})
+
+	oak.AddScene("end", scene.Scene{
+		Start: func(ctx *scene.Context) {
+			oak.SetColorBackground(image.Black)
+			text := render.NewText("You found kitten! Press Space to restart.", float64(oak.Width())/2, float64(oak.Height())/2)
+			w, h := text.GetDims()
+			text.ShiftX(-float64(w) / 2)
+			text.ShiftY(-float64(h) / 2)
+			render.Draw(text)
+		},
+		Loop: func() (cont bool) { return !oak.IsDown(key.Spacebar) },
+		End: func() (nextScene string, result *scene.Result) {
+			foundKitten = false
+			return "rfk", nil
 		},
 	})
 	oak.Init("rfk")
